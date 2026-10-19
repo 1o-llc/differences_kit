@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.1.1 (2026-10-19)
+
+The folder this crate reads is custodian_kit's, and a reading is the receipt
+that made it, by custodian_kit's one rule. Before, this crate declared its
+own copy of five of the folder's parts, and picked a spec's readings by a
+rule of its own that custodian did not share. Nothing is removed from the
+API. Every link is pinned to 269201c; the earlier lines are pinned to 54c8f4b
+(0.1.0).
+
+- `layout` declares no part of its own. `FOLDER` and the descriptors in
+  `layout::named` re-export custodian_kit's `store::named`, with the same
+  values ([src/layout.rs#L15](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/src/layout.rs#L15), [src/layout.rs#L18](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/src/layout.rs#L18)). The
+  policy and every path go through custodian_kit's `named::policy` and
+  `named::resolve` ([src/layout.rs#L29](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/src/layout.rs#L29), [src/layout.rs#L52](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/src/layout.rs#L52)).
+  Before, they were declared here ([src/layout.rs#L32](https://github.com/1o-llc/differences_kit/blob/54c8f4b27a7b1127f84502d44b90fda887beff9f/src/layout.rs#L32)). New:
+  `Project::open` for a caller that has found the folder already
+  ([src/layout.rs#L47](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/src/layout.rs#L47)), `Project::jobs_root` and
+  `Project::job_folders` ([src/layout.rs#L76](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/src/layout.rs#L76),
+  [src/layout.rs#L82](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/src/layout.rs#L82)).
+- A spec's readings are the receipts that made them, by custodian_kit's
+  `receipts::reading_of` ([src/receipts.rs#L69](https://github.com/1o-llc/custodian_kit/blob/0d4ac01bb6274a7dbe669c0e05c96449ada1846d/src/receipts.rs#L69)). `reading_of`
+  ([src/difference.rs#L297](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/src/difference.rs#L297)) and `readings_of`
+  ([src/difference.rs#L303](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/src/difference.rs#L303)) read it, and `ReadingFiles` is its type.
+  Two behaviours change. A receipt of the same name that read no spec, a
+  preflight's for one, is no longer counted as a reading. A reading kept in a
+  job's folder is found wherever that folder is now. Before, any accepted
+  receipt of the name whose `.json` output was still in place counted
+  ([src/difference.rs#L291](https://github.com/1o-llc/differences_kit/blob/54c8f4b27a7b1127f84502d44b90fda887beff9f/src/difference.rs#L291)).
+- `reading_pair` ([src/difference.rs#L311](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/src/difference.rs#L311)) is the pair of readings
+  `readings` compares ([src/difference.rs#L330](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/src/difference.rs#L330)), and custodian's
+  `diff` reads the same pair.
+- New dependency: custodian_kit 0.3.1.
+
+Proof: the rustdoc JSON of 0.1.0 compared with this release: 254 public items
+before, 268 after. Six paths are now re-exports of custodian_kit's items with
+the same values (`layout::FOLDER` and five `layout::named` descriptors), and
+none is removed. `cargo test` runs 4 tests, the 2 of 0.1.0 and two new:
+`every_path_read_here_is_the_kits` resolves every one of custodian_kit's parts
+here and in its store and finds them equal ([tests/layout.rs#L11](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/tests/layout.rs#L11)), and
+`a_reading_is_a_reading_receipt_and_its_record_follows_its_job_folder`
+([tests/kinds.rs#L137](https://github.com/1o-llc/differences_kit/blob/269201c59e097d8ae6f015eca4ef0450a8a5869e/tests/kinds.rs#L137)).
+
 ## 0.1.0 (2026-10-19)
 
 The library that puts every kind of history side by side. Each kind of
