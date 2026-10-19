@@ -1,42 +1,22 @@
 // Copyright © 2026 1o. All rights reserved.
 
 //! The project: the folder holding `.custodian/`, and the files of it this
-//! crate reads, named through pathgen as custodian_kit names them (a dev
-//! policy whose base is the project root and whose app is `.custodian`, the
-//! same route ids and templates), and the tree snapshots it keeps.
+//! crate reads. The folder is custodian_kit's, named once in its
+//! `store::named` (a dev policy whose base is the project root and whose app
+//! is `.custodian`): this crate takes those descriptors and that policy, and
+//! declares none of its own.
 
 use crate::refusal::{Refusal, Result};
-use pathgen::{AppPathRole, ArtifactEndpoint, ArtifactOutputDescriptor, PathMutability, PathOwner, PathPolicy, PathSensitivity, PathTemplateVars};
+use pathgen::{ArtifactOutputDescriptor, PathPolicy};
 use receipt_history::Journal;
 use std::path::{Path, PathBuf};
 
-/// The initialized folder's name.
-pub const FOLDER: &str = ".custodian";
+/// The initialized folder's name (custodian_kit's).
+pub use custodian_kit::store::FOLDER;
 
-const fn file(route_id: &'static str, kind: &'static str, endpoint: ArtifactEndpoint, base_role: AppPathRole, relative_template: &'static str, mutability: PathMutability) -> ArtifactOutputDescriptor {
-    ArtifactOutputDescriptor {
-        route_id,
-        schema: "custodian.layout.v1",
-        kind,
-        version: 1,
-        endpoint,
-        base_role,
-        relative_template,
-        sensitivity: PathSensitivity::Internal,
-        mutability,
-        owner: PathOwner::CurrentUser,
-    }
-}
-
-/// The files read here, each as custodian_kit's `store::named` declares it, and the one kept here.
+/// The files read here, custodian_kit's `store::named` descriptors.
 pub mod named {
-    use super::*;
-    pub const SETTINGS: ArtifactOutputDescriptor = file("custodian.settings", "settings", ArtifactEndpoint::FileToml, AppPathRole::Config, "custodian.toml", PathMutability::Writable);
-    pub const RECEIPT: ArtifactOutputDescriptor = file("custodian.receipt", "receipt", ArtifactEndpoint::FileJson, AppPathRole::Data, "receipts/{seq}.json", PathMutability::AppendOnly);
-    pub const JOURNAL: ArtifactOutputDescriptor = file("custodian.journal", "journal", ArtifactEndpoint::FileTxt, AppPathRole::State, "journal.sqlite", PathMutability::Writable);
-    pub const HISTORY_INDEX: ArtifactOutputDescriptor = file("custodian.history", "history", ArtifactEndpoint::FileTxt, AppPathRole::Data, "history/v1.history_index.1o.diff", PathMutability::Writable);
-    /// A tree snapshot (`tree_history::tree`), one per point.
-    pub const TREE: ArtifactOutputDescriptor = file("custodian.tree", "tree", ArtifactEndpoint::FileJson, AppPathRole::Data, "trees/{point}.json", PathMutability::AppendOnly);
+    pub use custodian_kit::store::named::{HISTORY_INDEX, JOB_FILE, JOURNAL, READING_RECORD, RECEIPT, SETTINGS, TREE};
 }
 
 /// A project: its root and the folder's paths.
@@ -47,7 +27,7 @@ pub struct Project {
 }
 
 fn policy(root: &Path) -> Result<PathPolicy> {
-    PathPolicy::dev(FOLDER).map(|p| p.with_dev_base(root)).map_err(|e| Refusal::NoProject.refuse(format!("{}: {e}", root.display())))
+    custodian_kit::store::named::policy(root).map_err(|e| Refusal::NoProject.refuse(format!("{}: {e}", root.display())))
 }
 
 impl Project {
@@ -63,13 +43,14 @@ impl Project {
         Err(Refusal::NoProject.refuse(start.display()))
     }
 
+    /// The project at `root`, the folder there or not (custodian, which has found the folder already, opens it so).
+    pub fn open(root: &Path) -> Result<Project> {
+        Ok(Project { root: root.to_path_buf(), policy: policy(root)? })
+    }
+
     /// A named file, its template filled.
     pub fn path(&self, d: &ArtifactOutputDescriptor, vars: &[(&str, &str)]) -> Result<PathBuf> {
-        let mut v = PathTemplateVars::new();
-        for (k, val) in vars {
-            v = v.with(k, val);
-        }
-        self.policy.artifact_output(d, &v).map(|r| r.path).map_err(|e| Refusal::NoProject.refuse(format!("{}: {e}", self.root.display())))
+        custodian_kit::store::named::resolve(&self.policy, d, vars).map_err(|e| Refusal::NoProject.refuse(format!("{}: {e}", self.root.display())))
     }
 
     fn dir_of(&self, d: &ArtifactOutputDescriptor, vars: &[(&str, &str)]) -> Result<PathBuf> {
@@ -89,6 +70,17 @@ impl Project {
     /// `data/trees/`, the tree snapshots.
     pub fn trees_dir(&self) -> Result<PathBuf> {
         self.dir_of(&named::TREE, &[("point", "x")])
+    }
+
+    /// `state/jobs/`, the job folders' root (a folder per state, a job's folder in it).
+    pub fn jobs_root(&self) -> Result<PathBuf> {
+        Ok(self.dir_of(&named::JOB_FILE, &[("state", "x"), ("job", "x")])?.parent().and_then(Path::parent).map(Path::to_path_buf).unwrap_or_default())
+    }
+
+    /// Every job folder, with its state, in custodian_kit's state order (`queued`, `running`, `done`), each state's
+    /// folders in name order.
+    pub fn job_folders(&self) -> Result<Vec<(String, PathBuf)>> {
+        Ok(custodian_kit::store::job_folders(&self.jobs_root()?))
     }
 
     /// The journal, brought up to the receipt files the folder carries (a

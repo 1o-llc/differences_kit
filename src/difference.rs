@@ -286,24 +286,29 @@ pub fn changes(p: &Project, jobs: &[&str]) -> Result<Difference> {
 
 // ---- readings ----
 
-/// A spec's readings as the receipts hold them, oldest first: each accepted
-/// run of that name whose record reads as a reading (reuses left out).
-pub fn readings_of(p: &Project, spec: &str) -> Result<Vec<(Receipt, String)>> {
-    let j = p.journal()?;
-    Ok(j.runs()?
-        .into_iter()
-        .filter(|r| r.name == spec && r.accepted && r.reused_seq.is_none())
-        .filter_map(|r| {
-            let rec = r.outputs.iter().find(|o| o.ends_with(".json")).cloned()?;
-            p.at(&rec).is_file().then_some((r, rec))
-        })
-        .collect())
+/// Where a reading's files are, relative to the root: its record (the facts)
+/// and its page (custodian_kit's).
+pub use custodian_kit::receipts::ReadingFiles;
+
+/// The reading a receipt made: custodian_kit's one rule
+/// (`receipts::reading_of`), the rule its readings index and a job's
+/// `reading:` verification read too. `folders` is [`Project::job_folders`],
+/// read once by a caller that asks for many.
+pub fn reading_of(p: &Project, r: &Receipt, folders: &[(String, std::path::PathBuf)]) -> Option<ReadingFiles> {
+    custodian_kit::receipts::reading_of(&p.root, r, folders)
 }
 
-/// Two readings of one spec (receipt numbers; the last two by default), side
-/// by side: two counts by what moved file by file, any other reading by its
-/// rows and counts.
-pub fn readings(p: &Project, spec: &str, a: Option<i64>, b: Option<i64>) -> Result<Difference> {
+/// A spec's readings as the receipts hold them, oldest first: each receipt
+/// of that name that made a reading ([`reading_of`]), with its record.
+pub fn readings_of(p: &Project, spec: &str) -> Result<Vec<(Receipt, String)>> {
+    let runs = p.journal()?.runs()?;
+    Ok(custodian_kit::receipts::readings_of(&p.root, &runs, spec, &p.job_folders()?).into_iter().map(|(r, f)| (r, f.record)).collect())
+}
+
+/// The two readings of one spec a comparison reads (receipt numbers; the
+/// last two by default; a reuse's number names the reading it reused), each
+/// with its record: what `readings` compares and what custodian's `diff` reads.
+pub fn reading_pair(p: &Project, spec: &str, a: Option<i64>, b: Option<i64>) -> Result<[(Receipt, String); 2]> {
     let j = p.journal()?;
     let all = readings_of(p, spec)?;
     // a reuse names the reading it reused
@@ -316,6 +321,14 @@ pub fn readings(p: &Project, spec: &str, a: Option<i64>, b: Option<i64>) -> Resu
     };
     let after = pick(b, all.last())?;
     let before = pick(a, all.iter().rev().find(|(r, _)| r.seq < after.0.seq))?;
+    Ok([before, after])
+}
+
+/// Two readings of one spec (receipt numbers; the last two by default), side
+/// by side: two counts by what moved file by file, any other reading by its
+/// rows and counts.
+pub fn readings(p: &Project, spec: &str, a: Option<i64>, b: Option<i64>) -> Result<Difference> {
+    let [before, after] = reading_pair(p, spec, a, b)?;
     let (pa, pb) = (p.at(&before.1), p.at(&after.1));
     if let (Some((x, _, _)), Some((y, _, _))) = (tree_history::count::load_count(&pa), tree_history::count::load_count(&pb)) {
         let d = compare_counts(&x, &y);

@@ -132,3 +132,27 @@ fn every_kind_answers_side_by_side_from_one_project() {
         assert_eq!(receipts_since(&p, e2).unwrap().said[0], "2 receipt(s) after #4, 0 of them readings");
     }
 }
+
+#[test]
+fn a_reading_is_a_reading_receipt_and_its_record_follows_its_job_folder() {
+    let root = project();
+    let j = Journal::open(&root.join(".custodian/state/journal.sqlite")).unwrap();
+    let rec = |stamp: &str, n: usize| serde_json::json!({"name": "env", "stamp": stamp, "counts": [{"what": "use sites", "n": n}], "query": {"results": []}, "unresolved": []});
+    // a reading kept in its job's folder while the job ran; the folder has since moved to done/
+    let done = root.join(".custodian/state/jobs/done/batch");
+    std::fs::create_dir_all(&done).unwrap();
+    std::fs::write(done.join(custodian_kit::jobs::job_file_name()), "1o.job {\n  id \"j-9\"\n  name \"batch\"\n}\n").unwrap();
+    write(&root, ".custodian/state/jobs/done/batch/readings/env/1.json", rec("20261019T110000Z", 1));
+    let ran = keep(&root, &j, receipt("env", "reading", vec![".custodian/state/jobs/running/batch/readings/env/1.json".into()], "c1", Some("j-9")));
+    // a preflight of the same name is not a reading
+    let pre = write(&root, ".custodian/data/preflight/env/x.json", serde_json::json!({}));
+    keep(&root, &j, receipt("env", "preflight", vec![pre], "c1", None));
+    let r2 = write(&root, ".custodian/data/readings/env/2.json", rec("20261019T120000Z", 2));
+    let second = keep(&root, &j, receipt("env", "reading", vec![r2.clone()], "c2", None));
+    let p = Project::find(&root).unwrap();
+    let all = differences_kit::readings_of(&p, "env").unwrap();
+    assert_eq!(all.iter().map(|(r, f)| (r.seq, f.as_str())).collect::<Vec<_>>(), [(ran, ".custodian/state/jobs/done/batch/readings/env/1.json"), (second, r2.as_str())]);
+    let [a, b] = differences_kit::reading_pair(&p, "env", None, None).unwrap();
+    assert_eq!((a.0.seq, b.0.seq), (ran, second));
+    assert!(readings(&p, "env", None, None).unwrap().page.contains("- use sites: 1 → 2 (changed)"));
+}

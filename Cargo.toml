@@ -1,6 +1,6 @@
 [package]
 name = "differences_kit"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.89"
 authors = ["James Hunt <james@1o.business>"]
@@ -22,7 +22,8 @@ tree_history = "0.1.0"
 change_history = "0.1.0"
 diff_history = "0.1.0"
 task_history = "0.1.0"
-# the folder layout, named once per file it reads
+# the folder layout: custodian_kit's, named once in its store::named; pathgen resolves it
+custodian_kit = "0.3.1"
 pathgen = "0.1.2"
 # the kinds as one word
 big-bad-bool = "0.1.1"
