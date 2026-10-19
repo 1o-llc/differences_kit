@@ -1,0 +1,1 @@
+//! `differences_kit` — reserved. the library for building a kind of history (records, digests, revisions, verification) that the differences CLI composes — the toolkit under task_history, diff_history, change_history, revision_history, tree_history and receipt_history. This 0.0.1 holds the name; the first working release follows.
