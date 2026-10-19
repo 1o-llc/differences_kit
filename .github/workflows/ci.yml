@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [stable, "1.56"]
+        rust: [stable, "1.89"]
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -34,6 +34,8 @@ jobs:
         # whose rust-version this one meets
         if: matrix.rust != 'stable'
         run: CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo +stable generate-lockfile
+      - name: tree, the program the tree lines run
+        run: command -v tree || (sudo apt-get update -q && sudo apt-get install -y -q tree)
       - name: Test
         run: cargo test --workspace --all-features
 

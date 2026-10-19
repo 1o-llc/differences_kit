@@ -1,11 +1,30 @@
 [package]
 name = "differences_kit"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.89"
 authors = ["James Hunt <james@1o.business>"]
 license = "MIT OR Apache-2.0"
-description = "Reserved: the library for building a kind of history (records, digests, revisions, verification) that the differences CLI composes — the toolkit under task_history, diff_history, change_history, revision_history, tree_history and receipt_history. The first working release follows; nothing in 0.0.1 is usable yet."
+description = "Every kind of history a project keeps, side by side: the tree and the counts at two points, the receipts since a point, a task's revisions, the lines each job touched, two readings of one question and the task histories, composed over the nodeplan.1o.diff.v1 records; the one API custodian and the differences command line call"
 repository = "https://github.com/1o-llc/differences_kit"
-keywords = ["1o", "history", "changes"]
+readme = "README.md"
+keywords = ["1o", "history", "diff", "differences", "receipts"]
 categories = ["development-tools"]
+include = ["src/**", "tests/**", "Cargo.toml", "LICENSE*", "README*", "CHANGELOG*"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# the histories it composes
+receipt_history = "0.1.0"
+revision_history = "0.1.0"
+tree_history = "0.1.0"
+change_history = "0.1.0"
+diff_history = "0.1.0"
+task_history = "0.1.0"
+# the folder layout, named once per file it reads
+pathgen = "0.1.2"
+# the kinds as one word
+big-bad-bool = "0.1.1"
+# refusal codes
+liaise = "0.2.4"
